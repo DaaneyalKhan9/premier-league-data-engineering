@@ -1,128 +1,157 @@
 
 import os
 import json
+import time
 import requests
-import pandas as pd
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 
 
-# API endpoint for Premier League team information
-API_URL = "https://api.football-data.org/v4/competitions/PL/teams"
+# ==========================================
+# 1. API CONFIGURATION
+# ==========================================
+
+# Base URL for Premier League API requests
+BASE_URL = "https://api.football-data.org/v4/competitions/PL"
+
+# Datasets we want to extract
+ENDPOINTS = {
+    "teams": "teams",
+    "matches": "matches",
+    "standings": "standings",
+    "scorers": "scorers",
+    "competition": ""
+}
+
+# Location where raw API responses will be stored
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 
 
-def fetch_teams():
-    """Retrieve Premier League team data from the API."""
+# ==========================================
+# 2. FETCH DATA FROM API
+# ==========================================
 
-    # Load the API key securely from our .env file
-    load_dotenv()
-    api_key = os.getenv("FOOTBALL_API_KEY")
+def fetch_data(endpoint, api_key):
+    """Retrieve JSON data from a football API endpoint."""
 
-    # Stop execution if the API key is missing
-    if not api_key:
-        raise ValueError("FOOTBALL_API_KEY is missing")
+    # Construct the URL for the selected dataset
+    url = f"{BASE_URL}/{endpoint}" if endpoint else BASE_URL
 
-    # Include the API key in the request headers for authentication
-    headers = {"X-Auth-Token": api_key}
+    # Authenticate the request using our API key
+    headers = {
+        "X-Auth-Token": api_key
+    }
 
-    # Send a GET request to retrieve data from the API
+    # Send the HTTP GET request
     response = requests.get(
-        API_URL,
+        url,
         headers=headers,
-        timeout=15
+        timeout=30
     )
 
-    # Raise an error if the API returns an unsuccessful HTTP status
+    # Raise an error for unsuccessful responses
     response.raise_for_status()
 
     # Convert the JSON response into a Python dictionary
     return response.json()
 
 
-def create_dataframe(data):
-    """Convert the API team records into a Pandas DataFrame."""
+# ==========================================
+# 3. SAVE RAW JSON DATA
+# ==========================================
 
-    # Extract the list of teams from the JSON dictionary
-    teams = data["teams"]
-
-    # Convert the list of dictionaries into rows and columns
-    return pd.DataFrame(teams)
-
-
-def explore_data(data, df):
-    """Explore the API response and inspect the dataset."""
-
-    # Inspect the top-level keys returned by the API
-    print("\n--- API RESPONSE ---")
-    print("Available keys:", list(data.keys()))
-
-    # Display the first team record as formatted JSON
-    if data["teams"]:
-        print("\nFirst team:")
-        print(json.dumps(data["teams"][0], indent=4))
-
-    # Display the number of teams and DataFrame dimensions
-    print("\n--- DATAFRAME OVERVIEW ---")
-    print("Total teams:", len(df))
-    print("Shape:", df.shape)
-
-    # Display the available column names
-    print("Columns:", df.columns.tolist())
-
-    # Preview the first five rows of the dataset
-    print("\nFirst five rows:")
-    print(df.head())
-
-    # Count missing (null) values in each column
-    print("\nMissing values:")
-    print(df.isnull().sum())
-
-    # Display column data types and non-null counts
-    print("\nData types:")
-    df.info()
-
-
-def save_raw_data(data):
+def save_raw_data(data, dataset_name):
     """Save the original API response as a JSON file."""
 
-    # Define the raw data folder relative to the project root
-    project_root = Path(__file__).resolve().parent.parent
-    output_dir = project_root / "data" / "raw"
+    # Create the raw data folder if it doesn't exist
+    RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Create the folder if it doesn't already exist
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Generate a UTC timestamp for the filename
+    timestamp = datetime.now(timezone.utc).strftime(
+        "%Y%m%d_%H%M%S_%f"
+    )
 
-    # Generate a unique filename using the current timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"premier_league_teams_{timestamp}.json"
+    # Create a filename for the selected dataset
+    filename = f"premier_league_{dataset_name}_{timestamp}.json"
 
-    # Save the original API response without modifying it
-    output_path = output_dir / filename
+    # Build the complete output path
+    output_path = RAW_DATA_DIR / filename
 
+    # Save the JSON response without changing its structure
     with open(output_path, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=4)
-
-    print(f"\nRaw data saved to: {output_path}")
+        json.dump(data, file, indent=4, ensure_ascii=False)
 
     return output_path
 
 
+# ==========================================
+# 4. MAIN EXTRACTION PIPELINE
+# ==========================================
+
 def main():
-    """Run the extraction and data exploration process."""
+    """Extract and save all configured football datasets."""
 
-    # Extract data from the API
-    data = fetch_teams()
+    # Load the API key from the .env file
+    load_dotenv()
+    api_key = os.getenv("FOOTBALL_API_KEY")
 
-    # Save the original response before any transformations
-    save_raw_data(data)
+    # Stop the pipeline if authentication is missing
+    if not api_key:
+        raise ValueError("FOOTBALL_API_KEY is missing from .env")
 
-    # Convert the team records into a Pandas DataFrame
-    teams_df = create_dataframe(data)
+    print("Starting Premier League data extraction...\n")
 
-    # Explore the dataset
-    explore_data(data, teams_df)
+    successful = []
+    failed = []
+
+    # Loop through each configured API endpoint
+    for dataset_name, endpoint in ENDPOINTS.items():
+
+        print(f"Extracting {dataset_name}...")
+
+        try:
+            # Step 1: Retrieve the API response
+            data = fetch_data(endpoint, api_key)
+
+            # Step 2: Save the original response as JSON
+            output_path = save_raw_data(data, dataset_name)
+
+            # Step 3: Record successful extraction
+            successful.append(dataset_name)
+
+            print(f"Saved successfully: {output_path.name}\n")
+
+        except requests.exceptions.RequestException as error:
+            # Report API/network failures without stopping other datasets
+            failed.append(dataset_name)
+            print(f"API request failed for {dataset_name}: {error}\n")
+
+        except OSError as error:
+            # Report file-saving failures
+            failed.append(dataset_name)
+            print(f"Could not save {dataset_name}: {error}\n")
+
+        # Brief pause to avoid sending requests too quickly
+        time.sleep(7)
+
+    # Display the final extraction summary
+    print("\n--- EXTRACTION SUMMARY ---")
+    print(f"Successful datasets: {len(successful)}")
+    print(f"Failed datasets: {len(failed)}")
+
+    if failed:
+        print("Failed:", ", ".join(failed))
+        raise RuntimeError("One or more datasets failed to extract")
+
+    print("Extraction pipeline completed successfully!")
+
+
+# ==========================================
+# 5. SCRIPT ENTRY POINT
+# ==========================================
 
 if __name__ == "__main__":
     main()
