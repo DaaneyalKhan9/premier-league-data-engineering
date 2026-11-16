@@ -1,0 +1,518 @@
+{
+  "datasets": [
+    {
+      "name": "a1cc0811",
+      "displayName": "League Standings",
+      "queryLines": [
+        "\n",
+        "SELECT\n",
+        "    position AS Pos,\n",
+        "    team_name AS Team,\n",
+        "    played AS P,\n",
+        "    won AS W,\n",
+        "    drawn AS D,\n",
+        "    lost AS L,\n",
+        "    goals_for AS GF,\n",
+        "    goals_against AS GA,\n",
+        "    goal_difference AS GD,\n",
+        "    points AS Pts\n",
+        "FROM workspace.default.gold_league_table\n",
+        "ORDER BY position ASC;\n"
+      ]
+    },
+    {
+      "name": "83ed1baa",
+      "displayName": "Season KPI's",
+      "queryLines": [
+        "SELECT\n",
+        "    (SELECT COUNT(*)\n",
+        "     FROM workspace.default.gold_league_table) AS total_teams,\n",
+        "\n",
+        "    (SELECT COUNT(*)\n",
+        "     FROM workspace.default.silver_matches\n",
+        "     WHERE match_status = 'FINISHED') AS matches_played,\n",
+        "\n",
+        "    (SELECT COALESCE(SUM(home_goals + away_goals), 0)\n",
+        "     FROM workspace.default.silver_matches\n",
+        "     WHERE match_status = 'FINISHED') AS total_goals;"
+      ]
+    },
+    {
+      "name": "c2d9ca51",
+      "displayName": "Team Points",
+      "queryLines": [
+        "SELECT\n",
+        "    team_name,\n",
+        "    points\n",
+        "FROM workspace.default.gold_league_table\n",
+        "ORDER BY points DESC, team_name ASC\n",
+        "LIMIT 10;"
+      ]
+    },
+    {
+      "name": "4857275b",
+      "displayName": "Top Goalscorers",
+      "queryLines": [
+        "SELECT\n",
+        "    player_name,\n",
+        "    team_name,\n",
+        "    goals\n",
+        "FROM workspace.default.gold_player_stats\n",
+        "ORDER BY goals DESC, player_name ASC\n",
+        "LIMIT 10;"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "82ac4072",
+      "displayName": "2026/27 Season",
+      "layout": [
+        {
+          "widget": {
+            "name": "total-team",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "83ed1baa",
+                  "fields": [
+                    {
+                      "name": "sum(total_teams)",
+                      "expression": "SUM(`total_teams`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "`Total Teams`",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_teams)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "matches-played",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "83ed1baa",
+                  "fields": [
+                    {
+                      "name": "sum(matches_played)",
+                      "expression": "SUM(`matches_played`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "`Matches Played`",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(matches_played)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "total-goals",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "83ed1baa",
+                  "fields": [
+                    {
+                      "name": "sum(total_goals)",
+                      "expression": "SUM(`total_goals`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "`Total goals`\n<p>&nbsp;</p>\n",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_goals)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 1,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "top-10-teams-by-points",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c2d9ca51",
+                  "fields": [
+                    {
+                      "name": "sum(points)",
+                      "expression": "SUM(`points`)"
+                    },
+                    {
+                      "name": "team_name",
+                      "expression": "`team_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "`Top 10 Teams by Points`",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#5A2078"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(points)",
+                  "displayName": "Points",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "team_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "top-10-goalscorers",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "4857275b",
+                  "fields": [
+                    {
+                      "name": "sum(goals)",
+                      "expression": "SUM(`goals`)"
+                    },
+                    {
+                      "name": "player_name",
+                      "expression": "`player_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "`Top 10 Goalscorers`",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#10B981"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(goals)",
+                  "displayName": "Goals",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "player_name",
+                  "displayName": "Player",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "premier-league-standings",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a1cc0811",
+                  "fields": [
+                    {
+                      "name": "Pos",
+                      "expression": "`Pos`"
+                    },
+                    {
+                      "name": "Team",
+                      "expression": "`Team`"
+                    },
+                    {
+                      "name": "P",
+                      "expression": "`P`"
+                    },
+                    {
+                      "name": "W",
+                      "expression": "`W`"
+                    },
+                    {
+                      "name": "D",
+                      "expression": "`D`"
+                    },
+                    {
+                      "name": "L",
+                      "expression": "`L`"
+                    },
+                    {
+                      "name": "GF",
+                      "expression": "`GF`"
+                    },
+                    {
+                      "name": "GA",
+                      "expression": "`GA`"
+                    },
+                    {
+                      "name": "GD",
+                      "expression": "`GD`"
+                    },
+                    {
+                      "name": "Pts",
+                      "expression": "`Pts`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "`Premier League Standings`",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "Pos"
+                  },
+                  {
+                    "fieldName": "Team"
+                  },
+                  {
+                    "fieldName": "P"
+                  },
+                  {
+                    "fieldName": "W"
+                  },
+                  {
+                    "fieldName": "D"
+                  },
+                  {
+                    "fieldName": "L"
+                  },
+                  {
+                    "fieldName": "GF"
+                  },
+                  {
+                    "fieldName": "GA"
+                  },
+                  {
+                    "fieldName": "GD"
+                  },
+                  {
+                    "fieldName": "Pts"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "07a021dd",
+            "spec": {
+              "widgetType": "text",
+              "version": 1,
+              "encodings": {
+                "text": {
+                  "lines": [
+                    "**Premier League Analytics | 2026/27** "
+                  ],
+                  "fields": []
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F3F6FA",
+        "dark": "#1F272D"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBorderColor": {
+        "light": "#E3E8EF"
+      },
+      "fontColor": {
+        "light": "#11171C",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#37003C",
+        "dark": "#8ACAFF"
+      },
+      "visualizationColors": [
+        "#077A9D",
+        "#FFAB00",
+        "#00A972",
+        "#FF3621",
+        "#8BCAE7",
+        "#AB4057",
+        "#99DDB4",
+        "#FCA4A1",
+        "#919191",
+        "#BF7080"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "widgetCornerRadius": 16
+    },
+    "applyModeEnabled": false
+  }
+}
